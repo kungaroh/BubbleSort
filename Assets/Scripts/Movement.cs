@@ -13,11 +13,12 @@ public class Movement : MonoBehaviour
     Camera thisCamera;
     public GameObject Tubes;
 
+    Dictionary<string, List<GameObject>> ballTube = new Dictionary<string, List<GameObject>> { };
+
     // Start is called before the first frame update
     void Start()
     {
         thisCamera = GetComponent<Camera>();
-        Debug.Log(Tubes.transform.childCount);
         foreach (Transform child in Tubes.transform)
         {
             ballTracker(child.gameObject);
@@ -42,7 +43,7 @@ public class Movement : MonoBehaviour
                 {
                     if (go.gameObject.name.StartsWith("Tube"))
                     {
-                        ballSelector();//get balls and select the top one then increase height of the top ball to the top of the tube
+                        ballSelector(go.gameObject);//get balls and select the top one then increase height of the top ball to the top of the tube
                     }
                 }
             }
@@ -51,12 +52,39 @@ public class Movement : MonoBehaviour
 
     void ballTracker(GameObject Tube) // when called this function should track where all the balls are
     {
+        string keyName = Tube.name;
+        List<GameObject> dicList;
+        
+        foreach (Transform child in Tube.transform)
+        {
+            if (!ballTube.TryGetValue(keyName, out dicList))
+            {
+                dicList = new List<GameObject>();
+                dicList.Add(child.gameObject);
+                ballTube.Add(keyName, dicList);
+            }
+            else
+            {
+                ballTube[keyName].Add(child.gameObject);
+            }
+        }
+        
+        
+
         //detect all collisions, identify the balls and add them to an array, then sort them based on height
     }
 
-    void ballSelector()
+    void ballSelector(GameObject Tube)
     {
-        //select ball
+        string keyName = Tube.name;
+        List<GameObject> dicList = ballTube[keyName];
+        Debug.Log(keyName);
+        int j = 0;
+        foreach (GameObject i in dicList)
+        {
+            Debug.Log(dicList[j]);
+            j++;
+        }
     }
 }
 
