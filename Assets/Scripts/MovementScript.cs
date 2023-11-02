@@ -4,13 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 public class Movement : MonoBehaviour
 {
-    /* PLAN:
-     * onClick(Tube) = select tube & find out what top ball is 
-     * onClick(secondTube) tube.full ? if yes cannot move ball if no is ball colour matching? yes = move ball no = don't move ball
-     */
+    
     Camera thisCamera;
     public GameObject Tubes;
     private bool isBallSelected = false;
@@ -18,6 +16,7 @@ public class Movement : MonoBehaviour
     public Rigidbody2D ballFreeze;
     GameObject currGO;
     GameObject currBall;
+    int numFin;//number of tubes that have been finished (all balls the same colour inside
 
     Dictionary<string, List<GameObject>> ballTube = new Dictionary<string, List<GameObject>> { };
 
@@ -58,8 +57,8 @@ public class Movement : MonoBehaviour
     }
 
 
-    GameObject ball;
-    void ballTracker(GameObject Tube) // when called this function should track where all the balls are
+    
+    void ballTracker(GameObject Tube) // when called this function looks at all child objects of a Tube and adds them to the dictionary - it's only really used to create the dictionary to start the level
     {
         string keyName = Tube.name;
         List<GameObject> dicList;
@@ -92,31 +91,48 @@ public class Movement : MonoBehaviour
         List<GameObject> dicList;
         Vector2 selBallPos;
 
-
-
-
         if (ballTube.ContainsKey(keyName) == true)
         {
             dicList = ballTube[keyName];
 
-            if (ballTube[keyName].Count <= 0 )
+            if (ballTube[keyName].Count <= 0 ) //this runs when an existing tube becomes empty and you're trying to put a ball in the empty tube
             {
-                //this causes a memory leak somehow xx
+                Debug.Log("Tube is empty: ");
+                
                 ballTube[keyName].Add(selBall);
+
+                ballFreeze = selBall.GetComponent<Rigidbody2D>();
 
                 selBall.transform.position = new Vector2(Tube.transform.position.x, Tube.transform.position.y + 2);
                 ballFreeze.simulated = true;
-                ballTube[currGO.name].Remove(selBall);
-                Debug.Log(selBall + " has been removed from " + currGO + " and added to " + keyName);
 
+                ballTube[currGO.name].Remove(selBall);
+
+                Debug.Log(selBall + " has been removed from " + currGO + " and added to " + keyName);
+                currBall = selBall;
                 isBallSelected = false;
+                Debug.Log("ball selected: " + isBallSelected+ "Ball simulated: " + ballFreeze.simulated);
+                //issue here where when ball is moved into the empty tube, in unity it doesn't become simulated even though here it does
+                
             }
-            else
+            else //this runs if a tube is not empty
             {
                 selBall = dicList[0];
             }
 
-            if (isBallSelected == false &  currBall!= selBall & currBall != null)
+
+            if (isBallSelected == false & currBall == null) // this runs if no ball is selected and there have been no balls previously selected (first move)
+            {
+                Debug.Log("Valid tube. No ball selected. currBall = null");
+                selBallPos = selBall.transform.position;
+                selBall.transform.position = new Vector2(selBallPos.x, Tube.transform.position.y + 2);
+                ballFreeze = selBall.GetComponent<Rigidbody2D>();
+                ballFreeze.simulated = false;
+
+                isBallSelected = true;
+                currBall = selBall;
+            }
+            else if (isBallSelected == false &  currBall!= selBall & currBall != null) // this runs when a no ball is selected, but a ball has previously been used (e.g. just moved a ball and are selecting a new ball
             {
                 Debug.Log("Valid tube. No ball selected. ");
                 selBallPos = selBall.transform.position;
@@ -128,9 +144,9 @@ public class Movement : MonoBehaviour
                 currBall = selBall;
                 
             }
-            else if (isBallSelected == true & currBall != selBall & currBall != null)
+            else if (isBallSelected == true & currBall != selBall & currBall != null)// this runs when a ball is selected and you click another tube
             {
-                if (currBall.tag == selBall.tag)
+                if (currBall.tag == selBall.tag & ballTube[keyName].Count < 4) // this checks if the balls have the same tag(colour) and the tube is not full, in order to move the ball
                 {
                     Debug.Log("Valid tube. ball selected. Balls has same tag ");
                     ballTube[keyName].Add(currBall);
@@ -145,25 +161,23 @@ public class Movement : MonoBehaviour
                     Debug.Log(currBall + " has been removed from " + currGO + " and added to " + keyName);
                     isBallSelected = false;
                     currBall = selBall;
+                    Debug.Log(ballTube[keyName].Count);
+                    if(ballTube[keyName].Count == 4)
+                    {
+                        finChecker(Tube);
+                    }
                 }
-                else
+                else //this runs if the balls are different colours or the tube is full (drops selected ball and re-runs to select new ball)
                 {
-                    Debug.Log("Valid Tube. Ball Selected. Different tag");
+                    Debug.Log("Valid Tube. Ball Selected. Different tag or tube is already full");
                     ballFreeze.simulated = true;
                     isBallSelected = false;
 
                     ballSelector(Tube);
                 }
             }
-            else if (isBallSelected == true & currBall == selBall)
+            else if (isBallSelected == false & currBall == selBall & ballFreeze.simulated == true)
             {
-                Debug.Log("Valid tube. Ball Selected. Same ball");
-                ballFreeze.simulated = true;
-                isBallSelected = false;
-            }
-            else if(isBallSelected == false & currBall == null)
-            {
-                Debug.Log("Valid tube. No ball selected. currBall = null");
                 selBallPos = selBall.transform.position;
                 selBall.transform.position = new Vector2(selBallPos.x, Tube.transform.position.y + 2);
                 ballFreeze = selBall.GetComponent<Rigidbody2D>();
@@ -172,20 +186,19 @@ public class Movement : MonoBehaviour
                 isBallSelected = true;
                 currBall = selBall;
             }
-            else
+            else if (isBallSelected == true & currBall == selBall) // this runs if you select the same ball, and drops the ball, unselecting it
             {
-                Debug.Log("Valid Tube. Ball Selected. Different balls");
-                ballFreeze.simulated = true;
-                isBallSelected = false;
-
-                ballSelector(Tube);
+                Debug.Log("Valid tube. Ball Selected. Same ball");
+                
+                
+                    ballFreeze.simulated = true;
+                    isBallSelected = false;
+                    currBall = selBall;
             }
         }
         
-
-        else
-        {    //this assumes a ball has already been selected
-            //if a tube isn't in ballTube dictionary, then add it to the dictionary with the currently selected ball, and move the ball there
+        else if (isBallSelected == true) //this sections runs if a ball has been selected and the tube is not in the dictionary (moving a ball to an empty tube at the start of the level
+        {
             Debug.LogWarning("Tube does not exist");
             Debug.Log(selBall);
             dicList = new List<GameObject>();
@@ -198,11 +211,53 @@ public class Movement : MonoBehaviour
 
             selBall.transform.position = new Vector2(Tube.transform.position.x, Tube.transform.position.y + 2);
             ballFreeze.simulated = true;
+            
             ballTube[currGO.name].Remove(selBall);
             Debug.Log(selBall + " has been removed from " + currGO + " and added to " + keyName);
 
             isBallSelected = false;
         }
-        
+    }
+
+    public void finChecker(GameObject Tube)
+    {
+        string keyName = Tube.name;
+        bool tagsMatch = false;
+        GameObject lastBall = null;
+
+        foreach(GameObject ball in ballTube[keyName])
+        {
+            if(lastBall == null)
+            {
+                lastBall = ball;
+            }
+            else if (lastBall != null & ball.tag == lastBall.tag)
+            {
+                tagsMatch = true;
+                lastBall = ball;
+                Debug.Log("tags match");
+            }
+           else if(lastBall != null & ball.tag != lastBall.tag)
+           {
+                tagsMatch = true;
+                lastBall = ball;
+                Debug.Log("tags don't match");
+                break;
+           }
+        }
+        if(tagsMatch == true)
+        {
+            Debug.Log("tags match and numfin increase");
+            numFin++;
+        }
+        if(numFin == ballTube.Count -2)
+        {
+            StartCoroutine(LoadNextLevel());
+        }
+    }
+    IEnumerator LoadNextLevel()
+    {
+        yield return new WaitForSeconds(1);
+        SceneManager.LoadScene("completeScene");
     }
 }
