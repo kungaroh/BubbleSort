@@ -5,11 +5,7 @@ using UnityEngine.SceneManagement;
 
 public class ButtonScript : MonoBehaviour
 {
-    string currentScene;
-    public void awake()
-    {
-       currentScene = SceneManager.GetActiveScene().ToString();
-    }
+    Scene currentScene;
     
     public void exitGame()
     {
@@ -21,7 +17,8 @@ public class ButtonScript : MonoBehaviour
     }
     public void reload()
     {
-        SceneManager.LoadScene(currentScene);
+        currentScene = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(currentScene.name);
     }
     public void mainMenu()
     {
