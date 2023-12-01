@@ -5,17 +5,23 @@ using UnityEngine.SceneManagement;
 
 public class ButtonScript : MonoBehaviour
 {
+    string currentScene;
+    public void awake()
+    {
+       currentScene = SceneManager.GetActiveScene().ToString();
+    }
+    
     public void exitGame()
     {
         Application.Quit();
     }
     public void startGame()
     {
-        SceneManager.LoadScene("MainScene");
+        SceneManager.LoadScene("Level 1");
     }
     public void reload()
     {
-        SceneManager.LoadScene("MainScene");
+        SceneManager.LoadScene(currentScene);
     }
     public void mainMenu()
     {

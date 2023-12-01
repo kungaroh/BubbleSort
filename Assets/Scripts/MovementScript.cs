@@ -17,6 +17,7 @@ public class Movement : MonoBehaviour
     GameObject currGO;
     GameObject currBall;
     int numFin;//number of tubes that have been finished (all balls the same colour inside
+    Scene currentLevel;
 
     Dictionary<string, List<GameObject>> ballTube = new Dictionary<string, List<GameObject>> { };
 
@@ -29,6 +30,8 @@ public class Movement : MonoBehaviour
         {
             ballTracker(child.gameObject);
         }
+         currentLevel = SceneManager.GetActiveScene();
+        numFin = 0;
     }
 
     // Update is called once per frame
@@ -83,7 +86,7 @@ public class Movement : MonoBehaviour
 
     }
 
-    
+
 
     void ballSelector(GameObject Tube)
     {
@@ -95,10 +98,10 @@ public class Movement : MonoBehaviour
         {
             dicList = ballTube[keyName];
 
-            if (ballTube[keyName].Count <= 0 ) //this runs when an existing tube becomes empty and you're trying to put a ball in the empty tube
+            if (ballTube[keyName].Count == 0) //this runs when an existing tube becomes empty and you're trying to put a ball in the empty tube
             {
                 Debug.Log("Tube is empty: ");
-                
+
                 ballTube[keyName].Add(selBall);
 
                 ballFreeze = selBall.GetComponent<Rigidbody2D>();
@@ -110,10 +113,11 @@ public class Movement : MonoBehaviour
 
                 Debug.Log(selBall + " has been removed from " + currGO + " and added to " + keyName);
                 currBall = selBall;
+                selBall = null;
                 isBallSelected = false;
-                Debug.Log("ball selected: " + isBallSelected+ "Ball simulated: " + ballFreeze.simulated);
+                Debug.Log("ball selected: " + isBallSelected + "Ball simulated: " + selBall.GetComponent<Rigidbody2D>().simulated);
                 //issue here where when ball is moved into the empty tube, in unity it doesn't become simulated even though here it does
-                
+
             }
             else //this runs if a tube is not empty
             {
@@ -132,7 +136,7 @@ public class Movement : MonoBehaviour
                 isBallSelected = true;
                 currBall = selBall;
             }
-            else if (isBallSelected == false &  currBall!= selBall & currBall != null) // this runs when a no ball is selected, but a ball has previously been used (e.g. just moved a ball and are selecting a new ball
+            else if (isBallSelected == false & currBall != selBall & currBall != null) // this runs when a no ball is selected, but a ball has previously been used (e.g. just moved a ball and are selecting a new ball
             {
                 Debug.Log("Valid tube. No ball selected. ");
                 selBallPos = selBall.transform.position;
@@ -142,7 +146,7 @@ public class Movement : MonoBehaviour
 
                 isBallSelected = true;
                 currBall = selBall;
-                
+
             }
             else if (isBallSelected == true & currBall != selBall & currBall != null)// this runs when a ball is selected and you click another tube
             {
@@ -162,7 +166,7 @@ public class Movement : MonoBehaviour
                     isBallSelected = false;
                     currBall = selBall;
                     Debug.Log(ballTube[keyName].Count);
-                    if(ballTube[keyName].Count == 4)
+                    if (ballTube[keyName].Count == 4)
                     {
                         finChecker(Tube);
                     }
@@ -176,8 +180,9 @@ public class Movement : MonoBehaviour
                     ballSelector(Tube);
                 }
             }
-            else if (isBallSelected == false & currBall == selBall & ballFreeze.simulated == true)
+            else if ( isBallSelected == false & currBall == selBall & ballFreeze.simulated == true) //this causes ball dropping issue
             {
+                Debug.Log("When does this run?");
                 selBallPos = selBall.transform.position;
                 selBall.transform.position = new Vector2(selBallPos.x, Tube.transform.position.y + 2);
                 ballFreeze = selBall.GetComponent<Rigidbody2D>();
@@ -189,14 +194,14 @@ public class Movement : MonoBehaviour
             else if (isBallSelected == true & currBall == selBall) // this runs if you select the same ball, and drops the ball, unselecting it
             {
                 Debug.Log("Valid tube. Ball Selected. Same ball");
-                
-                
-                    ballFreeze.simulated = true;
-                    isBallSelected = false;
-                    currBall = selBall;
+
+
+                ballFreeze.simulated = true;
+                isBallSelected = false;
+                currBall = selBall;
             }
         }
-        
+
         else if (isBallSelected == true) //this sections runs if a ball has been selected and the tube is not in the dictionary (moving a ball to an empty tube at the start of the level
         {
             Debug.LogWarning("Tube does not exist");
@@ -211,7 +216,7 @@ public class Movement : MonoBehaviour
 
             selBall.transform.position = new Vector2(Tube.transform.position.x, Tube.transform.position.y + 2);
             ballFreeze.simulated = true;
-            
+
             ballTube[currGO.name].Remove(selBall);
             Debug.Log(selBall + " has been removed from " + currGO + " and added to " + keyName);
 
@@ -224,40 +229,66 @@ public class Movement : MonoBehaviour
         string keyName = Tube.name;
         bool tagsMatch = false;
         GameObject lastBall = null;
-
-        foreach(GameObject ball in ballTube[keyName])
+        if (numFin != ballTube.Count - 2)
         {
-            if(lastBall == null)
+            foreach (GameObject ball in ballTube[keyName])
             {
-                lastBall = ball;
+                if (lastBall == null)
+                {
+                    lastBall = ball;
+                }
+                else if (lastBall != null & ball.tag == lastBall.tag)
+                {
+                    tagsMatch = true;
+                    lastBall = ball;
+                    Debug.Log("tags match");
+                }
+                else if (lastBall != null & ball.tag != lastBall.tag)
+                {
+                    tagsMatch = false;
+                    lastBall = ball;
+                    Debug.Log("tags don't match");
+                    break;
+                }
             }
-            else if (lastBall != null & ball.tag == lastBall.tag)
+            if (tagsMatch == true)
             {
-                tagsMatch = true;
-                lastBall = ball;
-                Debug.Log("tags match");
+                Debug.Log("tags match and numfin increase");
+                numFin++;
             }
-           else if(lastBall != null & ball.tag != lastBall.tag)
-           {
-                tagsMatch = true;
-                lastBall = ball;
-                Debug.Log("tags don't match");
-                break;
-           }
-        }
-        if(tagsMatch == true)
-        {
-            Debug.Log("tags match and numfin increase");
-            numFin++;
         }
         if(numFin == ballTube.Count -2)
         {
+            Debug.Log("Loading next level");
             StartCoroutine(LoadNextLevel());
         }
     }
     IEnumerator LoadNextLevel()
     {
+        switch(currentLevel.name)
+        {
+            case "Level 1":
+                //yield return new WaitForSeconds(1);
+                SceneManager.LoadScene("Level 2");
+                break;
+            case "Level 2":
+                //yield return new WaitForSeconds(1);
+                SceneManager.LoadScene("Level 3");
+                break;
+            case "Level 3":
+                //yield return new WaitForSeconds(1);
+                SceneManager.LoadScene("Level 4");
+                break;
+            case "Level 4":
+                //yield return new WaitForSeconds(1);
+                SceneManager.LoadScene("completeScene");
+                break;
+            default:
+                Debug.Log("Something went wrong loading the next level");
+                break;
+                
+        }
         yield return new WaitForSeconds(1);
-        SceneManager.LoadScene("completeScene");
+
     }
 }
