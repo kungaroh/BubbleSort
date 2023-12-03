@@ -271,50 +271,23 @@ public class Movement : MonoBehaviour
     }
     IEnumerator LoadNextLevel()
     {
-        string levelName = currentLevel.name;
-        string[] split = levelName.Split(' ');
-        int levelNum;
-        bool isNum = int.TryParse(split[1], out levelNum);
-
-        if (isNum)
+        int levelNum = currentLevel.buildIndex;
+        int buildIndex = SceneUtility.GetBuildIndexByScenePath($"Level {levelNum}"); //this works because the buildIndex is always 1 above the current level name e.g. level 1 is build index 2
+        if (levelNum > 10)
         {
-            int buildIndex = SceneUtility.GetBuildIndexByScenePath($"Level {levelNum +1}");
-            if(buildIndex > 0)
-            {
-                SceneManager.LoadScene(buildIndex);
-            }
-            else
-            {
-                Debug.LogError("There was an error loading that scene");
-                SceneManager.LoadScene(0);
-            }
-            
+            yield return new WaitForSeconds(1);
+            SceneManager.LoadScene(1);
         }
-
-        /*switch(currentLevel.name)
+        else if (buildIndex > 0)
         {
-            case "Level 1":
-                //yield return new WaitForSeconds(1);
-                SceneManager.LoadScene("Level 2");
-                break;
-            case "Level 2":
-                //yield return new WaitForSeconds(1);
-                SceneManager.LoadScene("Level 3");
-                break;
-            case "Level 3":
-                //yield return new WaitForSeconds(1);
-                SceneManager.LoadScene("Level 4");
-                break;
-            case "Level 4":
-                //yield return new WaitForSeconds(1);
-                SceneManager.LoadScene("completeScene");
-                break;
-            default:
-                Debug.Log("Something went wrong loading the next level");
-                break;
-                
-        }*/
-        yield return new WaitForSeconds(1);
-
+            yield return new WaitForSeconds(1);
+            SceneManager.LoadScene(buildIndex);
+        }
+        else
+        {
+            yield return new WaitForSeconds(1);
+            Debug.LogError("There was an error loading that scene");
+            SceneManager.LoadScene(0);
+        }
     }
 }
