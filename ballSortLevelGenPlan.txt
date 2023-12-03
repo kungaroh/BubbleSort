@@ -1,0 +1,30 @@
+level generator:
+#change Game complete screen to scene 1. Now all levels will have their buildIndex be 1 higher that the level name.
+
+
+Select difficulty: choose a number of tubes
+Select amount of ball colour: number of tubes - 2
+select ball colours: numbers 0-8 each number relating to a colour
+
+Create Scene using template with correct number of tubes
+Add balls into tubes randomly: max number of balls per colour, cannot add into last 2 tubes
+run AutoChild.AutoAssignChildren();
+
+Solve to ensure playable?
+------------------------------------------------------------------------------------------------------
+int difficulty = random(0-11);
+for (int i; i < difficulty-2; i++)
+{
+	int colours[] = colours.add(random(0-> difficulty-2));
+}
+
+unity duplicate scene with name $('Tubes' {difficulty})
+
+create ballObject colours[0], place in random tube(0->difficulty-2)(transform(tube.transform.x, tube.y + 1) need a check to ensure balls are placed above not on top of eachother
+do that until 4 balls of each colour are placed in the scene.
+
+
+UnityEditor add new scene last buildIndexNumber + 1
+name scene $"Level {lastBuildIndexNumber}"
+
+

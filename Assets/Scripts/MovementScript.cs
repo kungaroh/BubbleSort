@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
+using UnityEngine.SceneManagement; 
 
 public class Movement : MonoBehaviour
 {
@@ -18,6 +18,7 @@ public class Movement : MonoBehaviour
     GameObject currBall;
     int numFin;//number of tubes that have been finished (all balls the same colour inside
     Scene currentLevel;
+    
 
     Dictionary<string, List<GameObject>> ballTube = new Dictionary<string, List<GameObject>> { };
 
@@ -32,27 +33,32 @@ public class Movement : MonoBehaviour
         }
          currentLevel = SceneManager.GetActiveScene();
         numFin = 0;
+
+        
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (!ButtonScript.gameIsPaused)
         {
-            PointerEventData pointer = new PointerEventData(EventSystem.current);
-            pointer.position = Input.mousePosition;
-
-            List<RaycastResult> raycastResults = new List<RaycastResult>();
-            EventSystem.current.RaycastAll(pointer, raycastResults);
-
-            if (raycastResults.Count > 0)
+            if (Input.GetMouseButtonDown(0))
             {
-                foreach (var go in raycastResults)
+                PointerEventData pointer = new PointerEventData(EventSystem.current);
+                pointer.position = Input.mousePosition;
+
+                List<RaycastResult> raycastResults = new List<RaycastResult>();
+                EventSystem.current.RaycastAll(pointer, raycastResults);
+
+                if (raycastResults.Count > 0)
                 {
-                    if (go.gameObject.name.StartsWith("Tube"))
+                    foreach (var go in raycastResults)
                     {
-                        ballSelector(go.gameObject);//get balls and select the top one then increase height of the top ball to the top of the tube
-                        currGO = go.gameObject;
+                        if (go.gameObject.name.StartsWith("Tube"))
+                        {
+                            ballSelector(go.gameObject);//get balls and select the top one then increase height of the top ball to the top of the tube
+                            currGO = go.gameObject;
+                        }
                     }
                 }
             }
@@ -265,7 +271,27 @@ public class Movement : MonoBehaviour
     }
     IEnumerator LoadNextLevel()
     {
-        switch(currentLevel.name)
+        string levelName = currentLevel.name;
+        string[] split = levelName.Split(' ');
+        int levelNum;
+        bool isNum = int.TryParse(split[1], out levelNum);
+
+        if (isNum)
+        {
+            int buildIndex = SceneUtility.GetBuildIndexByScenePath($"Level {levelNum +1}");
+            if(buildIndex > 0)
+            {
+                SceneManager.LoadScene(buildIndex);
+            }
+            else
+            {
+                Debug.LogError("There was an error loading that scene");
+                SceneManager.LoadScene(0);
+            }
+            
+        }
+
+        /*switch(currentLevel.name)
         {
             case "Level 1":
                 //yield return new WaitForSeconds(1);
@@ -287,7 +313,7 @@ public class Movement : MonoBehaviour
                 Debug.Log("Something went wrong loading the next level");
                 break;
                 
-        }
+        }*/
         yield return new WaitForSeconds(1);
 
     }
