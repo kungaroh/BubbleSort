@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement; 
 
-public class Movement : MonoBehaviour
+public class MovementScript : MonoBehaviour
 {
     
     Camera thisCamera;
@@ -17,7 +17,8 @@ public class Movement : MonoBehaviour
     GameObject currGO;
     GameObject currBall;
     int numFin;//number of tubes that have been finished (all balls the same colour inside
-    Scene currentLevel;
+    static Scene currentLevel;
+    public GameObject finishedMenuUI;
     
 
     Dictionary<string, List<GameObject>> ballTube = new Dictionary<string, List<GameObject>> { };
@@ -265,22 +266,27 @@ public class Movement : MonoBehaviour
         }
         if(numFin == ballTube.Count -2)
         {
-            Debug.Log("Loading next level");
-            StartCoroutine(LoadNextLevel());
+            Debug.Log("Level Complete");
+            finishedMenuUI.SetActive(true);
+            ButtonScript.gameIsPaused = true;
         }
     }
-    IEnumerator LoadNextLevel()
+    public static IEnumerator LoadNextLevel()
     {
+        Debug.Log("LoadNextLevel Called");
         int levelNum = currentLevel.buildIndex;
         int buildIndex = SceneUtility.GetBuildIndexByScenePath($"Level {levelNum}"); //this works because the buildIndex is always 1 above the current level name e.g. level 1 is build index 2
+        
         if (levelNum > 10)
         {
             yield return new WaitForSeconds(1);
+            Debug.Log("Game Complete");
             SceneManager.LoadScene(1);
         }
         else if (buildIndex > 0)
         {
             yield return new WaitForSeconds(1);
+            Debug.Log("loading level " + buildIndex);
             SceneManager.LoadScene(buildIndex);
         }
         else

@@ -63,4 +63,11 @@ public class ButtonScript : MonoBehaviour
         Time.timeScale = 1f;
         gameIsPaused = false;
     }
+
+    public void NextLvl()
+    {
+        Debug.Log("Loading Next Level");
+        gameIsPaused = false;
+        StartCoroutine(MovementScript.LoadNextLevel());
+    }
 }
