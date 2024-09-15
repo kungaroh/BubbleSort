@@ -1,42 +1,50 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
-using UnityEngine.XR;
+
+public enum State
+{
+    NoBall,
+    HoldingBall,
+    MovingBall,
+    TubeFull,
+    InvalidMove
+}
 
 public class MovementScript : MonoBehaviour
 {
-    private Camera _thisCamera;
     [SerializeField] private GameObject tubes;
-    private bool _isBallSelected = false;
     private GameObject _selectedBall;
     private Rigidbody2D _rbBall;
     private GameObject _currentTube;
+    private GameObject _newTube;
     private GameObject _previousBall;
+    private GameObject _selectedTube;
     private int _countCompleteTubes;
     private static Scene _currentLevel;
+    private int _winTubes;
     [SerializeField] private GameObject levelCompleteMenuUI;
 
-    // The dictionary where the key is the name of the tube and the data is the balls in a stack
-    private readonly Dictionary<string, Stack<GameObject>> _dictionaryBallTube = new Dictionary < string, Stack<GameObject>> { };
+    private State _currentState = State.NoBall;
+
+    // key is the name of the tube and the data is stack of balls
+    private readonly Dictionary<string, Stack<GameObject>> _dictionaryBallTube;
 
 
     // Start is called before the first frame update
     void Start()
     {
-        _thisCamera = GetComponent<Camera>();
-
         foreach (Transform child in tubes.transform)
         {
-            ballTracker(child.gameObject);
+            BallTracker(child.gameObject);
         }
 
         _currentLevel = SceneManager.GetActiveScene();
         _countCompleteTubes = 0;
-
+        _winTubes = _dictionaryBallTube.Count - 2;
     }
 
     // Update is called once per frame
@@ -44,31 +52,30 @@ public class MovementScript : MonoBehaviour
     {
         if (!ButtonScript.gameIsPaused)
         {
-            if (Input.GetMouseButtonDown(0))
+
+            switch (_currentState)
             {
-                PointerEventData pointer = new PointerEventData(EventSystem.current);
-                pointer.position = Input.mousePosition;
-
-                List<RaycastResult> raycastResults = new List<RaycastResult>();
-                EventSystem.current.RaycastAll(pointer, raycastResults);
-
-                if (raycastResults.Count > 0)
-                {
-                    foreach (var go in raycastResults)
-                    {
-                        if (go.gameObject.name.StartsWith("Tube"))
-                        {
-                            ballSelector(go.gameObject); // get balls and select the top one then increase height of the top ball to the top of the tube
-                            _currentTube = go.gameObject;
-                        }
-                    }
-                }
+                case State.NoBall:
+                    HandleNoBall();
+                    break;
+                case State.HoldingBall:
+                    HandleHoldingBall();
+                    break;
+                case State.MovingBall:
+                    HandleMovingBall();
+                    break;
+                case State.TubeFull:
+                    HandleTubeFull();
+                    break;
+                case State.InvalidMove:
+                    HandleInvalidMove();
+                    break;
             }
         }
     }
     
-    // Adds the child objects of tubes and adds them to the dictionary
-    void ballTracker(GameObject tube)
+    // Adds the balls in the tubes in the correct place in the dictionary
+    void BallTracker(GameObject tube)
     {
         string keyName = tube.name;
         // Creates the stack that will be added to the dictionary
@@ -90,108 +97,100 @@ public class MovementScript : MonoBehaviour
         _dictionaryBallTube.Add(keyName, dictStack);
     }
 
-    void ballSelector(GameObject tube)
+    
+    // State Handlers
+    void HandleNoBall()
     {
-        string keyName = tube.name;
-        Stack<GameObject> dictStack = _dictionaryBallTube[keyName];
-
-        // if tube is empty move the ball
-        if (dictStack.Count == 0)
+        _currentTube = null;
+        if (Input.GetMouseButtonDown(0))
         {
-            if (_isBallSelected)
-                HandleBallMove(tube, keyName);
-            
+            PointerEventData pointer = new PointerEventData(EventSystem.current);
+            pointer.position = Input.mousePosition;
+
+            List<RaycastResult> raycastResults = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointer, raycastResults);
+
+            if (raycastResults.Count > 0)
+            {
+                foreach (var go in raycastResults)
+                {
+                    if (go.gameObject.name.StartsWith("Tube"))
+                    {
+                        SelectBall(go.gameObject);
+                        _currentTube = go.gameObject;
+                        _currentState = State.HoldingBall;
+                    }
+                }
+                
+            }
+        }
+    }
+
+    void HandleHoldingBall()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            PointerEventData pointer = new PointerEventData(EventSystem.current);
+            pointer.position = Input.mousePosition;
+
+            List<RaycastResult> raycastResults = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(pointer, raycastResults);
+
+            if (raycastResults.Count > 0)
+            {
+                foreach (var go in raycastResults)
+                {
+                    if (go.gameObject.name.StartsWith("Tube"))
+                    {
+                        _selectedTube = go.gameObject;
+                    }
+                }
+                
+            }
+        }
+        
+        if (_selectedTube == null )
+        {
             return;
         }
-        //select top ball from tube
-        _selectedBall = dictStack.Peek();
 
-        // First ball picked up
-        if (!_isBallSelected & _previousBall == null)
+        if (_currentTube == _selectedTube)
         {
-            SelectBall(tube);
+            _selectedTube = null;
+            DeselectBall();
+            _currentState = State.NoBall;
+            return;
         }
-        // Picking up new ball
-        else if (!_isBallSelected & _previousBall != _selectedBall)
-        {
-            SelectBall(tube);
-        }
-        // Holding a new ball, selected different tube
-        else if (_isBallSelected & _previousBall != _selectedBall)
-        {
-            HandleBallMove(tube, keyName);
-        }
-        // Selected a ball, selected same tube
-        else if (_isBallSelected & _previousBall == _selectedBall)
-        {
-            DeselectBall(tube);
-        }
-        // shouldn't ever happen
-        /*else if (!_isBallSelected & _previousBall == _selectedBall & _rbBall.simulated)
-        {
-            Debug.Log("Something has gone horribly wrong");
-            SelectBall(tube);
-        }*/
+
+        _currentState = IsValidMove(_selectedTube) ? State.MovingBall : State.InvalidMove;
     }
 
-    void SelectBall(GameObject tube)
+    void HandleMovingBall()
     {
-        Debug.Log($"Picking up {_selectedBall}");
-        Vector2 selectedBallPos = _selectedBall.transform.position;
-        _selectedBall.transform.position = new Vector2(selectedBallPos.x, tube.transform.position.y + 2);
-        _rbBall = _selectedBall.GetComponent<Rigidbody2D>();
-        _rbBall.simulated = false;
-        _isBallSelected = true;
-        _previousBall = _selectedBall;
-    }
-
-    void HandleBallMove(GameObject tube, string keyName)
-    {
-        if (_previousBall.CompareTag(_selectedBall.tag) & _dictionaryBallTube[keyName].Count < 4)
+        string newKey = _selectedTube.name;
+        string keyName = _currentTube.name;
+        Debug.Log(_selectedBall.name);
+        _dictionaryBallTube[newKey].Push(_selectedBall);
+        _dictionaryBallTube[keyName].Pop();
+        MoveBall(_selectedTube);
+        if (_dictionaryBallTube[newKey].Count == 4)
         {
-            Debug.Log($"Moving {_previousBall} to {keyName}");
-            _dictionaryBallTube[keyName].Push(_previousBall);
-            _dictionaryBallTube[_currentTube.name].Pop();
-            MoveBall(tube);
-            _isBallSelected = false;
-            _previousBall = _selectedBall;
-            _selectedBall = null;
-            if (_dictionaryBallTube[keyName].Count == 4)
-            {
-                FinChecker(tube, keyName);
-            }
+            _currentState = State.TubeFull;
         }
         else
         {
-            Debug.Log($"{_previousBall} not moved (different tag or full tube)");
-            Debug.Log($" TAG CHECK: {_previousBall.CompareTag(_selectedBall.tag)} COUNT CHECK: {_dictionaryBallTube[_currentTube.name].Count}");
-            _rbBall.simulated = true;
-            _isBallSelected = false;
-            ballSelector(tube);
+            _selectedTube = null;
+            _currentState = State.NoBall;
             
         }
     }
-    
-    void MoveBall(GameObject tube)
-    {
-        _previousBall.transform.position = new Vector2(tube.transform.position.x, tube.transform.position.y + 2);
-        _rbBall.simulated = true;
-    }
 
-    void DeselectBall(GameObject tube)
-    {
-        Debug.Log($"Deselecting {_selectedBall.name}");
-        _rbBall.simulated = true;
-        _isBallSelected = false;
-        _previousBall = _selectedBall;
-    }
-
-    void FinChecker(GameObject tube, string keyName)
+    void HandleTubeFull()
     {
         bool tagsMatch = false;
         GameObject lastBall = null;
         
-        foreach (GameObject ball in _dictionaryBallTube[keyName])
+        foreach (GameObject ball in _dictionaryBallTube[_selectedTube.name])
         {
             if (lastBall == null)
             {
@@ -203,29 +202,94 @@ public class MovementScript : MonoBehaviour
                 lastBall = ball;
                 Debug.Log("tags match");
             }
-            else if (lastBall != null & !ball.CompareTag(lastBall.tag))
+            else if (!ball.CompareTag(lastBall.tag))
             {
                 tagsMatch = false;
-                lastBall = ball;
                 Debug.Log("tags don't match");
                 break;
             }
+            
         }
 
         if (!tagsMatch)
+        {
+            _selectedTube = null;
+            _currentState = State.NoBall;
             return;
-        
+        }
         
         Debug.Log("tags match and completed tubes increases");
         _countCompleteTubes++;
         
-            
-        if(_countCompleteTubes == _dictionaryBallTube.Count -2)
+        if(_countCompleteTubes == _winTubes)
         {
             Debug.Log("Level Complete");
             levelCompleteMenuUI.SetActive(true);
             ButtonScript.gameIsPaused = true;
         }
+
+        _selectedTube = null;
+        _currentState = State.NoBall;
+    }
+
+    void HandleInvalidMove()
+    {
+        Debug.Log("Checking move");
+        DeselectBall();
+        SelectBall(_selectedTube);
+        _currentTube = _selectedTube;
+        _selectedTube = null;
+        _currentState = State.HoldingBall;
+    }
+    
+    // Ball Management
+    void SelectBall(GameObject tube)
+    {
+        string keyName = tube.name;
+        if (_dictionaryBallTube[keyName].Count > 0)
+        {
+            _selectedBall = _dictionaryBallTube[keyName].Peek();
+        }
+        Debug.Log($"Picking up {_selectedBall}");
+        Vector2 selectedBallPos = _selectedBall.transform.position;
+        _selectedBall.transform.position = new Vector2(selectedBallPos.x, tube.transform.position.y + 2);
+        _rbBall = _selectedBall.GetComponent<Rigidbody2D>();
+        _rbBall.simulated = false;
+    }
+
+    void DeselectBall()
+    {
+        Debug.Log($"Deselecting {_selectedBall.name}");
+        _rbBall.simulated = true;
+    } 
+    
+    void MoveBall(GameObject tube)
+    {
+        _selectedBall.transform.position = new Vector2(tube.transform.position.x, tube.transform.position.y + 2);
+        _rbBall.simulated = true;
+    }
+    
+    // Utility Methods
+    bool IsValidMove(GameObject tube)
+    {
+        
+        if(_dictionaryBallTube[tube.name].Count < 1)
+        {
+            return true;
+        }    
+        if (_dictionaryBallTube[tube.name].Count == 4)
+        {
+            Debug.Log("Tube is full");
+            return false;
+        }
+        GameObject topBall = _dictionaryBallTube[tube.name].Peek();
+        if (!topBall.CompareTag(_selectedBall.tag))
+        {
+            Debug.Log("different coloured ball");
+            return false;
+        }
+
+        return true;
     }
     
     public static IEnumerator LoadNextLevel()
