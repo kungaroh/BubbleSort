@@ -1,5 +1,6 @@
 # BubbleSort
 [<img src="Bubble Sort Icon.png">](https://kungaroh.itch.io/bubble-sort-puzzle)
+
 Play Bubble Sort [here!](https://kungaroh.itch.io/bubble-sort-puzzle)
 
 Bubble Sort Puzzle is a fun and easy game where you try to arrange the all coloured bubbles into a tube containing only one colour!
