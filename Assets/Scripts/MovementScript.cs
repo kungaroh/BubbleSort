@@ -31,7 +31,7 @@ public class MovementScript : MonoBehaviour
     private State _currentState = State.NoBall;
 
     // key is the name of the tube and the data is stack of balls
-    private readonly Dictionary<string, Stack<GameObject>> _dictionaryBallTube;
+    private readonly Dictionary<string, Stack<GameObject>> _dictionaryBallTube = new Dictionary<string, Stack<GameObject>>{};
 
 
     // Start is called before the first frame update
